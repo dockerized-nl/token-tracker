@@ -4,10 +4,14 @@ struct SettingsView: View {
     @ObservedObject var claude: ClaudeStore
     @ObservedObject var codex: CodexStore
     @ObservedObject var deepseek: DeepSeekStore
+    @ObservedObject var claudeAPI: ClaudeAPIStore
+    @ObservedObject var codexAPI: CodexAPIStore
 
     @State private var keyField: String = UserDefaults.standard.string(forKey: "deepseekApiKey") ?? ""
     @State private var pathField: String = UserDefaults.standard.string(forKey: "claudeLogsPath") ?? ""
     @State private var codexPathField: String = UserDefaults.standard.string(forKey: "codexLogsPath") ?? ""
+    @State private var anthropicKeyField: String = UserDefaults.standard.string(forKey: "anthropicAdminKey") ?? ""
+    @State private var openaiKeyField: String = UserDefaults.standard.string(forKey: "openaiAdminKey") ?? ""
     @AppStorage("refreshInterval") private var refreshInterval: Int = 30
     @State private var savedFlash = false
 
@@ -43,6 +47,56 @@ struct SettingsView: View {
                         Button("Clear usage history") { deepseek.clearHistory() }
                             .buttonStyle(.link)
                             .font(.system(size: 11))
+                    }
+                }
+
+                // Claude API (Anthropic Admin usage & cost)
+                Card {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SectionTitle(text: "Claude API Usage", systemImage: "key.fill")
+                        Text("Anthropic Admin API key (sk-ant-admin01-…) — distinct from a normal API key. Used to read your organization's token usage and cost from Anthropic's Usage & Cost API. Stored locally on this Mac.")
+                            .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
+                        SecureField("sk-ant-admin01-…", text: $anthropicKeyField)
+                            .textFieldStyle(.roundedBorder)
+                        HStack {
+                            Button("Save & Test") {
+                                claudeAPI.apiKey = anthropicKeyField.trimmingCharacters(in: .whitespacesAndNewlines)
+                                claudeAPI.refresh()
+                            }
+                            .buttonStyle(PrimaryButtonStyle())
+                            if claudeAPI.isLoading { ProgressView().controlSize(.small) }
+                            if let err = claudeAPI.errorMessage {
+                                Text(err).font(.system(size: 11)).foregroundStyle(Theme.bad).lineLimit(2)
+                            } else if claudeAPI.lastFetch != nil {
+                                Label("Connected", systemImage: "checkmark.seal.fill")
+                                    .font(.system(size: 11)).foregroundStyle(Theme.good)
+                            }
+                        }
+                    }
+                }
+
+                // Codex API (OpenAI Admin usage & cost)
+                Card {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SectionTitle(text: "Codex API Usage", systemImage: "key.fill")
+                        Text("OpenAI Admin API key (sk-admin-…) — distinct from a normal API key. Used to read your organization's token usage and cost from OpenAI's Usage & Costs API. Stored locally on this Mac.")
+                            .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
+                        SecureField("sk-admin-…", text: $openaiKeyField)
+                            .textFieldStyle(.roundedBorder)
+                        HStack {
+                            Button("Save & Test") {
+                                codexAPI.apiKey = openaiKeyField.trimmingCharacters(in: .whitespacesAndNewlines)
+                                codexAPI.refresh()
+                            }
+                            .buttonStyle(PrimaryButtonStyle())
+                            if codexAPI.isLoading { ProgressView().controlSize(.small) }
+                            if let err = codexAPI.errorMessage {
+                                Text(err).font(.system(size: 11)).foregroundStyle(Theme.bad).lineLimit(2)
+                            } else if codexAPI.lastFetch != nil {
+                                Label("Connected", systemImage: "checkmark.seal.fill")
+                                    .font(.system(size: 11)).foregroundStyle(Theme.good)
+                            }
+                        }
                     }
                 }
 

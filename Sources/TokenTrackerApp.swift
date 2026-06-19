@@ -21,10 +21,13 @@ struct TokenTrackerApp: App {
     @StateObject private var claude = ClaudeStore()
     @StateObject private var codex = CodexStore()
     @StateObject private var deepseek = DeepSeekStore()
+    @StateObject private var claudeAPI = ClaudeAPIStore()
+    @StateObject private var codexAPI = CodexAPIStore()
 
     var body: some Scene {
         WindowGroup {
-            RootView(claude: claude, codex: codex, deepseek: deepseek)
+            RootView(claude: claude, codex: codex, deepseek: deepseek,
+                     claudeAPI: claudeAPI, codexAPI: codexAPI)
                 .frame(minWidth: 920, minHeight: 640)
         }
         .windowStyle(.titleBar)
@@ -36,6 +39,8 @@ struct RootView: View {
     @ObservedObject var claude: ClaudeStore
     @ObservedObject var codex: CodexStore
     @ObservedObject var deepseek: DeepSeekStore
+    @ObservedObject var claudeAPI: ClaudeAPIStore
+    @ObservedObject var codexAPI: CodexAPIStore
     @State private var selection: Section = .claude
     @AppStorage("refreshInterval") private var refreshInterval: Int = 30
     @State private var timer: Timer?
@@ -45,10 +50,11 @@ struct RootView: View {
             sidebar
         } detail: {
             switch selection {
-            case .claude:   ClaudeDashboardView(store: claude)
-            case .codex:    CodexDashboardView(store: codex)
+            case .claude:   ClaudeDashboardView(store: claude, api: claudeAPI)
+            case .codex:    CodexDashboardView(store: codex, api: codexAPI)
             case .deepseek: DeepSeekDashboardView(store: deepseek)
-            case .settings: SettingsView(claude: claude, codex: codex, deepseek: deepseek)
+            case .settings: SettingsView(claude: claude, codex: codex, deepseek: deepseek,
+                                         claudeAPI: claudeAPI, codexAPI: codexAPI)
             }
         }
         .navigationSplitViewStyle(.balanced)
@@ -56,6 +62,8 @@ struct RootView: View {
             claude.refresh()
             codex.refresh()
             if deepseek.hasKey { deepseek.refresh() }
+            if claudeAPI.hasKey { claudeAPI.refresh() }
+            if codexAPI.hasKey { codexAPI.refresh() }
             startTimer()
         }
         .onChange(of: refreshInterval) { _, _ in startTimer() }
@@ -133,6 +141,8 @@ struct RootView: View {
                 claude.refresh()
                 codex.refresh()
                 if deepseek.hasKey { deepseek.refresh() }
+                if claudeAPI.hasKey { claudeAPI.refresh() }
+                if codexAPI.hasKey { codexAPI.refresh() }
             }
         }
     }
