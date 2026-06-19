@@ -3,6 +3,7 @@ import SwiftUI
 enum Section: String, CaseIterable, Identifiable {
     case claude = "Claude"
     case codex = "Codex"
+    case copilot = "Copilot"
     case deepseek = "DeepSeek"
     case settings = "Settings"
     var id: String { rawValue }
@@ -10,6 +11,7 @@ enum Section: String, CaseIterable, Identifiable {
         switch self {
         case .claude:   return "sparkles"
         case .codex:    return "chevron.left.forwardslash.chevron.right"
+        case .copilot:  return "airplane"
         case .deepseek: return "magnifyingglass.circle.fill"
         case .settings: return "gearshape.fill"
         }
@@ -20,13 +22,14 @@ enum Section: String, CaseIterable, Identifiable {
 struct TokenTrackerApp: App {
     @StateObject private var claude = ClaudeStore()
     @StateObject private var codex = CodexStore()
+    @StateObject private var copilot = CopilotStore()
     @StateObject private var deepseek = DeepSeekStore()
     @StateObject private var claudeAPI = ClaudeAPIStore()
     @StateObject private var codexAPI = CodexAPIStore()
 
     var body: some Scene {
         WindowGroup {
-            RootView(claude: claude, codex: codex, deepseek: deepseek,
+            RootView(claude: claude, codex: codex, copilot: copilot, deepseek: deepseek,
                      claudeAPI: claudeAPI, codexAPI: codexAPI)
                 .frame(minWidth: 920, minHeight: 640)
         }
@@ -38,6 +41,7 @@ struct TokenTrackerApp: App {
 struct RootView: View {
     @ObservedObject var claude: ClaudeStore
     @ObservedObject var codex: CodexStore
+    @ObservedObject var copilot: CopilotStore
     @ObservedObject var deepseek: DeepSeekStore
     @ObservedObject var claudeAPI: ClaudeAPIStore
     @ObservedObject var codexAPI: CodexAPIStore
@@ -52,8 +56,10 @@ struct RootView: View {
             switch selection {
             case .claude:   ClaudeDashboardView(store: claude, api: claudeAPI)
             case .codex:    CodexDashboardView(store: codex, api: codexAPI)
+            case .copilot:  CopilotDashboardView(store: copilot)
             case .deepseek: DeepSeekDashboardView(store: deepseek)
-            case .settings: SettingsView(claude: claude, codex: codex, deepseek: deepseek,
+            case .settings: SettingsView(claude: claude, codex: codex, copilot: copilot,
+                                         deepseek: deepseek,
                                          claudeAPI: claudeAPI, codexAPI: codexAPI)
             }
         }
@@ -61,6 +67,7 @@ struct RootView: View {
         .onAppear {
             claude.refresh()
             codex.refresh()
+            copilot.refresh()
             if deepseek.hasKey { deepseek.refresh() }
             if claudeAPI.hasKey { claudeAPI.refresh() }
             if codexAPI.hasKey { codexAPI.refresh() }
@@ -124,6 +131,9 @@ struct RootView: View {
             if selection == .codex || selection == .settings {
                 Label(formatTokens(codex.totalTokens) + " Codex", systemImage: "sum")
             }
+            if selection == .copilot || selection == .settings {
+                Label(formatTokens(copilot.totalTokens) + " Copilot", systemImage: "sum")
+            }
             if (selection == .deepseek || selection == .settings), let s = deepseek.latest {
                 Label(formatMoney(s.total, currency: s.currency) + " left", systemImage: "creditcard")
             }
@@ -140,6 +150,7 @@ struct RootView: View {
             Task { @MainActor in
                 claude.refresh()
                 codex.refresh()
+                copilot.refresh()
                 if deepseek.hasKey { deepseek.refresh() }
                 if claudeAPI.hasKey { claudeAPI.refresh() }
                 if codexAPI.hasKey { codexAPI.refresh() }

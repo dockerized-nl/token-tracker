@@ -1,17 +1,18 @@
 # Architecture
 
-Token Tracker is a single-window SwiftUI macOS app with three independent "stores"
-(one per provider) feeding three dashboard views, plus a shared settings screen.
+Token Tracker is a single-window SwiftUI macOS app with one independent "store"
+per provider feeding a matching dashboard view, plus a shared settings screen.
 
 ```
 TokenTrackerApp (@main)
 └── RootView  ── NavigationSplitView
-    ├── Sidebar: Claude · Codex · DeepSeek · Settings
+    ├── Sidebar: Claude · Codex · Copilot · DeepSeek · Settings
     └── Detail:
         ├── ClaudeDashboardView   ← ClaudeStore
         ├── CodexDashboardView    ← CodexStore
+        ├── CopilotDashboardView  ← CopilotStore
         ├── DeepSeekDashboardView ← DeepSeekStore
-        └── SettingsView          ← all three stores
+        └── SettingsView          ← all stores
 ```
 
 Each store is an `@MainActor ObservableObject`. Scanning/network work happens on a
@@ -85,6 +86,58 @@ the record total is `input + output`.
 
 The most recent `rate_limits` block is kept and shown as gauges with reset times.
 
+### Copilot — `~/.copilot/session-state/<session-id>/events.jsonl`
+The GitHub Copilot CLI writes one event per line. Relevant event `type`s:
+
+- `session.start`        → `data.sessionId`, `data.model`, `data.cwd`
+- `session.model_change` → `data.newModel`
+- `assistant.message` with `data.usage`:
+
+```jsonc
+{
+  "type": "assistant.message",
+  "timestamp": "2026-06-19T07:04:12.248Z",
+  "data": {
+    "model": "claude-sonnet-4.6",
+    "usage": {
+      "prompt_tokens": 22344,
+      "completion_tokens": 12,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "total_tokens": 22356
+    }
+  }
+}
+```
+
+- `session.shutdown` with per-model `modelMetrics`:
+
+```jsonc
+{
+  "type": "session.shutdown",
+  "timestamp": "…",
+  "data": {
+    "modelMetrics": {
+      "claude-sonnet-4.6": {
+        "requests": { "count": 1, "cost": 1 },
+        "usage": { "inputTokens": 22344, "outputTokens": 12,
+                   "cacheReadTokens": 0, "cacheWriteTokens": 0 }
+      }
+    }
+  }
+}
+```
+
+`CopilotStore.scan` walks the tree (the containing folder is the session id),
+tracks the current model across `session.start` / `session.model_change`, and emits
+one `UsageRecord` (the same struct Claude uses) per `assistant.message`. Token
+categories are treated as disjoint, so `total = input + output + cacheCreate + cacheRead`.
+The GitHub **premium-request** units in `session.shutdown` (`modelMetrics.*.requests.cost`,
+with `.count`) have no per-message equivalent and are summed separately for the
+"Premium Requests" tile. For older CLI builds that emit only `session.shutdown`, the
+scanner falls back to synthesising one record per model from `modelMetrics.*.usage`
+(splitting cache out of `inputTokens` to keep the categories disjoint).
+
 ### DeepSeek — `https://api.deepseek.com/user/balance`
 A `GET` with `Authorization: Bearer <key>` returns:
 
@@ -102,7 +155,7 @@ top-up doesn't make usage go negative). Per-day usage = first − last snapshot 
 
 ## Aggregation reference
 
-| Metric        | Claude / Codex                                   | DeepSeek                         |
+| Metric        | Claude / Codex / Copilot                         | DeepSeek                         |
 |---------------|--------------------------------------------------|---------------------------------|
 | Total         | Σ record totals                                  | peak balance − current balance  |
 | Today         | Σ records since local midnight                   | first − last snapshot today     |
