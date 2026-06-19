@@ -3,6 +3,7 @@ import Charts
 
 struct ClaudeDashboardView: View {
     @ObservedObject var store: ClaudeStore
+    @ObservedObject var api: ClaudeAPIStore
 
     private let cols = [GridItem(.adaptive(minimum: 200), spacing: 14)]
 
@@ -44,6 +45,8 @@ struct ClaudeDashboardView: View {
                         rightColumn
                     }
                 }
+
+                APIUsageSection(store: api)
             }
             .padding(22)
         }

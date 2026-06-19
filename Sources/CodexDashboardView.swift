@@ -3,6 +3,7 @@ import Charts
 
 struct CodexDashboardView: View {
     @ObservedObject var store: CodexStore
+    @ObservedObject var api: CodexAPIStore
 
     private let cols = [GridItem(.adaptive(minimum: 200), spacing: 14)]
 
@@ -42,6 +43,8 @@ struct CodexDashboardView: View {
                         rightColumn
                     }
                 }
+
+                APIUsageSection(store: api)
             }
             .padding(22)
         }
