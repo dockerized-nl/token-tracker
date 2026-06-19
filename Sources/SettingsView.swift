@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var claude: ClaudeStore
     @ObservedObject var codex: CodexStore
+    @ObservedObject var copilot: CopilotStore
     @ObservedObject var deepseek: DeepSeekStore
     @ObservedObject var claudeAPI: ClaudeAPIStore
     @ObservedObject var codexAPI: CodexAPIStore
@@ -10,6 +11,7 @@ struct SettingsView: View {
     @State private var keyField: String = UserDefaults.standard.string(forKey: "deepseekApiKey") ?? ""
     @State private var pathField: String = UserDefaults.standard.string(forKey: "claudeLogsPath") ?? ""
     @State private var codexPathField: String = UserDefaults.standard.string(forKey: "codexLogsPath") ?? ""
+    @State private var copilotPathField: String = UserDefaults.standard.string(forKey: "copilotLogsPath") ?? ""
     @State private var anthropicKeyField: String = UserDefaults.standard.string(forKey: "anthropicAdminKey") ?? ""
     @State private var openaiKeyField: String = UserDefaults.standard.string(forKey: "openaiAdminKey") ?? ""
     @AppStorage("refreshInterval") private var refreshInterval: Int = 30
@@ -147,6 +149,29 @@ struct SettingsView: View {
                     }
                 }
 
+                // Copilot logs
+                Card {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SectionTitle(text: "Copilot CLI Sessions", systemImage: "airplane")
+                        Text("Folder scanned for GitHub Copilot CLI usage. Leave empty to use the default (~/.copilot/session-state).")
+                            .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
+                        TextField("~/.copilot/session-state", text: $copilotPathField)
+                            .textFieldStyle(.roundedBorder)
+                        HStack {
+                            Button("Save & Rescan") {
+                                let trimmed = copilotPathField.trimmingCharacters(in: .whitespacesAndNewlines)
+                                UserDefaults.standard.set(trimmed, forKey: "copilotLogsPath")
+                                copilot.refresh()
+                                flash()
+                            }
+                            .buttonStyle(PrimaryButtonStyle())
+                            Text("Currently: \(copilot.logsRoot.path)")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(Theme.textSecondary).lineLimit(1)
+                        }
+                    }
+                }
+
                 // Refresh interval
                 Card {
                     VStack(alignment: .leading, spacing: 12) {
@@ -173,7 +198,7 @@ struct SettingsView: View {
                 Card {
                     VStack(alignment: .leading, spacing: 6) {
                         SectionTitle(text: "About", systemImage: "info.circle.fill")
-                        Text("Token Tracker — local usage dashboard for Claude, Codex & DeepSeek.")
+                        Text("Token Tracker — local usage dashboard for Claude, Codex, Copilot & DeepSeek.")
                             .font(.system(size: 12)).foregroundStyle(Theme.textSecondary)
                         Text("All data stays on your Mac. Nothing is uploaded.")
                             .font(.system(size: 11)).foregroundStyle(Theme.textSecondary)
